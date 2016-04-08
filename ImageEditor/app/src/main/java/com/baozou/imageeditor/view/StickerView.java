@@ -108,6 +108,7 @@ public class StickerView extends View {
             return;
         }
         bitmapList.add(mBitmap);
+
         //有几个bitmap，就对应着几个lastPoint的值,对应着PointList的size
         mLastPointXList.add(0f);
         mLastPointYList.add(0f);
@@ -154,16 +155,18 @@ public class StickerView extends View {
             }
 
             // draw line
-            canvas.drawLine(mPointsList.get(focusId)[0], mPointsList.get(focusId)[1], mPointsList.get(focusId)[2], mPointsList.get(focusId)[3], mPaint);
-            canvas.drawLine(mPointsList.get(focusId)[2], mPointsList.get(focusId)[3], mPointsList.get(focusId)[4], mPointsList.get(focusId)[5], mPaint);
-            canvas.drawLine(mPointsList.get(focusId)[4], mPointsList.get(focusId)[5], mPointsList.get(focusId)[6], mPointsList.get(focusId)[7], mPaint);
-            canvas.drawLine(mPointsList.get(focusId)[6], mPointsList.get(focusId)[7], mPointsList.get(focusId)[0], mPointsList.get(focusId)[1], mPaint);
+            if (focusId >= 0) {
+                canvas.drawLine(mPointsList.get(focusId)[0], mPointsList.get(focusId)[1], mPointsList.get(focusId)[2], mPointsList.get(focusId)[3], mPaint);
+                canvas.drawLine(mPointsList.get(focusId)[2], mPointsList.get(focusId)[3], mPointsList.get(focusId)[4], mPointsList.get(focusId)[5], mPaint);
+                canvas.drawLine(mPointsList.get(focusId)[4], mPointsList.get(focusId)[5], mPointsList.get(focusId)[6], mPointsList.get(focusId)[7], mPaint);
+                canvas.drawLine(mPointsList.get(focusId)[6], mPointsList.get(focusId)[7], mPointsList.get(focusId)[0], mPointsList.get(focusId)[1], mPaint);
 
-            //draw delete icon
-            canvas.drawBitmap(deleteController, mPointsList.get(focusId)[0] - deleteCWidth / 2, mPointsList.get(focusId)[1] - deleteCHeight / 2, mPaint);
+                //draw delete icon
+                canvas.drawBitmap(deleteController, mPointsList.get(focusId)[0] - deleteCWidth / 2, mPointsList.get(focusId)[1] - deleteCHeight / 2, mPaint);
 
-            //draw rotate icon
-            canvas.drawBitmap(rotateController, mPointsList.get(focusId)[4] - rotateCWidth / 2, mPointsList.get(focusId)[5] - rotateCHeight / 2, mPaint);
+                //draw rotate icon
+                canvas.drawBitmap(rotateController, mPointsList.get(focusId)[4] - rotateCWidth / 2, mPointsList.get(focusId)[5] - rotateCHeight / 2, mPaint);
+            }
         }
     }
 
@@ -212,8 +215,16 @@ public class StickerView extends View {
     /**
      * 删除操作
      */
-    private void doDelete() {
-        addBitmap(null);
+    private void doDelete(int position) {
+        bitmapList.get(position).recycle();
+        bitmapList.remove(position);
+        mPointsList.remove(position);
+        mRectList.remove(position);
+        mMatrixList.remove(position);
+        focusId = position - 1;
+        if (focusId == -1 && bitmapList.size() > 0) {
+            focusId = 0;
+        }
         isValidDeleteEvent = false;
         postInvalidate();
     }
@@ -295,7 +306,7 @@ public class StickerView extends View {
                 isValidMoveEvent = false;
                 if (isValidDeleteEvent) {
                     //删除操作
-                    doDelete();
+                    doDelete(focusId);
                 }
                 break;
         }
