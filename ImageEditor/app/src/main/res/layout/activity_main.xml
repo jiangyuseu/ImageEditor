@@ -9,15 +9,33 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.baozou.imageeditor.MainActivity">
 
+    <ImageView
+        android:id="@+id/bg_img"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@mipmap/bg"/>
+
     <com.baozou.imageeditor.view.StickerView
         android:id="@+id/stick_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <Button
-        android:id="@+id/add_stick"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
         android:layout_alignParentBottom="true"
-        android:text="增加贴纸"/>
+        android:layout_height="50dp">
+        <Button
+            android:id="@+id/add_stick"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:text="增加贴纸"/>
+        <Button
+            android:id="@+id/compose_btn"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:text="合成图片"/>
+    </LinearLayout>
+
 </RelativeLayout>

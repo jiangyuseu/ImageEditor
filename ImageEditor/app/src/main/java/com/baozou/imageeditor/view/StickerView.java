@@ -32,6 +32,9 @@ public class StickerView extends View {
     private Bitmap mBitmap;
     //背景bitmap
     private Bitmap bgBitmap;
+    //背景Bitmap的长高
+    private float bgBitmapWidth,bgBitmapHeight;
+
     //操作旋转的bitmap
     private Bitmap rotateController;
     //删除按钮的bitmap
@@ -97,6 +100,9 @@ public class StickerView extends View {
         deleteCHeight = deleteController.getHeight();
         deleteCWidth = deleteController.getWidth();
 
+        bgBitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.bg);
+        bgBitmapWidth = bgBitmap.getWidth();
+        bgBitmapHeight = bgBitmap.getHeight();
     }
 
     /**
@@ -104,6 +110,7 @@ public class StickerView extends View {
      */
     public void addBitmap(Bitmap bitmap) {
         this.mBitmap = bitmap;
+
         if (mBitmap == null) {
             return;
         }
@@ -131,6 +138,24 @@ public class StickerView extends View {
         //刷新
         postInvalidate();
     }
+
+    /**
+     * 合成图片
+     */
+    public Bitmap composeBitmap(){
+        if(bgBitmap == null)
+            return null;
+        Bitmap composeBitmap = Bitmap.createBitmap((int)bgBitmapWidth, (int)bgBitmapHeight, Bitmap.Config.ARGB_8888 );
+        Canvas canvas = new Canvas(composeBitmap);
+        canvas.drawBitmap(composeBitmap,0,0,mPaint);
+        for(int i=0;i<bitmapList.size();i++){
+            canvas.drawBitmap(bitmapList.get(i),mPointsList.get(i)[0],mPointsList.get(i)[1],mPaint);
+        }
+        canvas.save( Canvas.ALL_SAVE_FLAG );
+        canvas.restore();
+        return composeBitmap;
+    }
+
 
 
     @Override
@@ -288,7 +313,7 @@ public class StickerView extends View {
                     postInvalidate();
                 }
                 if (isValidMoveEvent) {
-                    //移动图片操作
+                    //移动图片操作，不超过背景区域
                     mMatrixList.get(focusId).postTranslate(x - mLastPointXList.get(focusId), y - mLastPointYList.get(focusId));
                     mLastPointXList.set(focusId, x);
                     mLastPointYList.set(focusId, y);
