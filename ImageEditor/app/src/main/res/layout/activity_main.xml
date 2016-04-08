@@ -11,6 +11,13 @@
 
     <com.baozou.imageeditor.view.StickerView
         android:id="@+id/stick_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/add_stick"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="50dp"
+        android:layout_alignParentBottom="true"
+        android:text="增加贴纸"/>
 </RelativeLayout>

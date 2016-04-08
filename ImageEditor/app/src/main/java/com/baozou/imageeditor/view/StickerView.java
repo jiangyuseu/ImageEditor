@@ -12,9 +12,13 @@ import android.util.AttributeSet;
 import android.util.FloatMath;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 
 import com.baozou.imageeditor.R;
 import com.baozou.imageeditor.utils.DisplayUtil;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by jiangyu on 2016/4/7.
@@ -32,30 +36,37 @@ public class StickerView extends View {
     private Bitmap rotateController;
     //删除按钮的bitmap
     private Bitmap deleteController;
-    //贴纸Bitmap长宽
-    private float mBitmapHeight, mBitmapWidth;
     //操控旋转Bitmap的长宽
     private float rotateCHeight, rotateCWidth;
     //删除按钮bitmap的长宽
     private float deleteCHeight, deleteCWidth;
-    //mBitmap原始坐标位置
-    private float[] mCoordinateInited;
-    //mBitmap的现坐标
-    private float[] mPoints;
-    //mBitmap的原始绘制矩形区域
-    private RectF rectFBitmap;
-    //mBitmap的现绘制矩形区域
-    private RectF mRect;
-    //mBitmap的变化matrix
-    private Matrix mMatrix;
+
     //是否是合法的旋转事件
     private boolean isValidRotateEvent = false;
     //是否是合法的删除事件
     private boolean isValidDeleteEvent = false;
     //是否是合法的移动事件
     private boolean isValidMoveEvent = false;
+
+
+    //保存贴纸列表
+    private List<Bitmap> bitmapList = new ArrayList<>();
+    //保存bitmap对应的原始坐标点
+    private List<float[]> mCoordinateList = new ArrayList<>();
+    //保存bitmap对应的现坐标点
+    private List<float[]> mPointsList = new ArrayList<>();
+    //保存Bitmap的原始绘制矩形
+    private List<RectF> bitmapRectfList = new ArrayList<>();
+    //保存Bitmap的现绘制矩形
+    private List<RectF> mRectList = new ArrayList<>();
+    //Bitmap的变换matrix
+    private List<Matrix> mMatrixList = new ArrayList<>();
+    //焦点所在的贴纸
+    private int focusId = -1;
+
     //旋转变化之前的坐标点
-    private float mLastPointX, mLastPointY;
+    private List<Float> mLastPointXList = new ArrayList<>();
+    private List<Float> mLastPointYList = new ArrayList<>();
 
     public StickerView(Context context) {
         this(context, null);
@@ -86,78 +97,100 @@ public class StickerView extends View {
         deleteCHeight = deleteController.getHeight();
         deleteCWidth = deleteController.getWidth();
 
-        mPoints = new float[10];
-        mRect = new RectF();
-
     }
 
-    public void setBitmap(Bitmap bitmap) {
+    /**
+     * 增加贴纸
+     */
+    public void addBitmap(Bitmap bitmap) {
         this.mBitmap = bitmap;
         if (mBitmap == null) {
             return;
         }
-        mBitmapHeight = mBitmap.getHeight();
-        mBitmapWidth = mBitmap.getWidth();
+        bitmapList.add(mBitmap);
+        //有几个bitmap，就对应着几个lastPoint的值,对应着PointList的size
+        mLastPointXList.add(0f);
+        mLastPointYList.add(0f);
+        mPointsList.add(new float[10]);
+        mRectList.add(new RectF());
 
-        //mBitmap的初始坐标点
-        float xInited = mBitmap.getWidth();
-        float yInited = mBitmap.getHeight();
-        mCoordinateInited = new float[]{0, 0, xInited, 0, xInited, yInited, 0, yInited, xInited / 2, yInited / 2};
+        float[] mCoordinateInited = new float[]{0, 0, mBitmap.getWidth(), 0, mBitmap.getWidth(), mBitmap.getHeight(), 0, mBitmap.getHeight(), mBitmap.getWidth() / 2, mBitmap.getHeight() / 2};
+        mCoordinateList.add(mCoordinateInited);
 
-        rectFBitmap = new RectF(0, 0, mBitmapWidth, mBitmapHeight);
+        RectF rectFBitmap = new RectF(0, 0, mBitmap.getWidth(), mBitmap.getHeight());
+        bitmapRectfList.add(rectFBitmap);
 
-        mMatrix = new Matrix();
-        float dx = DisplayUtil.getDisplayWidthPixels(getContext()) / 2;
-        float dy = DisplayUtil.getDisplayheightPixels(getContext()) / 2;
-        mMatrix.postTranslate(dx, dy);
+        Matrix mMatrix = new Matrix();
+        mMatrix.postTranslate(DisplayUtil.getDisplayWidthPixels(getContext()) / 2, DisplayUtil.getDisplayheightPixels(getContext()) / 2);
+        mMatrixList.add(mMatrix);
+
+        //添加贴纸后，获得焦点
+        focusId = bitmapList.size() - 1;
+
         //刷新
         postInvalidate();
     }
 
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (mBitmap == null) {
+        if (bitmapList == null) {
             return;
         }
-        //把经过matrix变换后的坐标赋值mPoints,mRect
-        mMatrix.mapPoints(mPoints, mCoordinateInited);
-        mMatrix.mapRect(mRect, rectFBitmap);
-        //draw bitmap
-        canvas.drawBitmap(mBitmap, mMatrix, mPaint);
+        if (bitmapList.size() == 0) {
+            return;
+        }
 
-        // draw line
-        canvas.drawLine(mPoints[0], mPoints[1], mPoints[2], mPoints[3], mPaint);
-        canvas.drawLine(mPoints[2], mPoints[3], mPoints[4], mPoints[5], mPaint);
-        canvas.drawLine(mPoints[4], mPoints[5], mPoints[6], mPoints[7], mPaint);
-        canvas.drawLine(mPoints[6], mPoints[7], mPoints[0], mPoints[1], mPaint);
+        if (mMatrixList.size() > 0 && mCoordinateList.size() > 0 && bitmapRectfList.size() > 0) {
+            for (int i = 0; i < bitmapList.size(); i++) {
+                //把经过matrix变换后的坐标赋值mPoints,mRect
+                mMatrixList.get(i).mapPoints(mPointsList.get(i), mCoordinateList.get(i));
+                mMatrixList.get(i).mapRect(mRectList.get(i), bitmapRectfList.get(i));
 
-        //draw delete icon
-        canvas.drawBitmap(deleteController, mPoints[0] - deleteCWidth / 2, mPoints[1] - deleteCHeight / 2, mPaint);
+                //draw bitmap
+                canvas.drawBitmap(bitmapList.get(i), mMatrixList.get(i), mPaint);
 
-        //draw rotate icon
-        canvas.drawBitmap(rotateController, mPoints[4] - rotateCWidth / 2, mPoints[5] - rotateCHeight / 2, mPaint);
+            }
+
+            // draw line
+            canvas.drawLine(mPointsList.get(focusId)[0], mPointsList.get(focusId)[1], mPointsList.get(focusId)[2], mPointsList.get(focusId)[3], mPaint);
+            canvas.drawLine(mPointsList.get(focusId)[2], mPointsList.get(focusId)[3], mPointsList.get(focusId)[4], mPointsList.get(focusId)[5], mPaint);
+            canvas.drawLine(mPointsList.get(focusId)[4], mPointsList.get(focusId)[5], mPointsList.get(focusId)[6], mPointsList.get(focusId)[7], mPaint);
+            canvas.drawLine(mPointsList.get(focusId)[6], mPointsList.get(focusId)[7], mPointsList.get(focusId)[0], mPointsList.get(focusId)[1], mPaint);
+
+            //draw delete icon
+            canvas.drawBitmap(deleteController, mPointsList.get(focusId)[0] - deleteCWidth / 2, mPointsList.get(focusId)[1] - deleteCHeight / 2, mPaint);
+
+            //draw rotate icon
+            canvas.drawBitmap(rotateController, mPointsList.get(focusId)[4] - rotateCWidth / 2, mPointsList.get(focusId)[5] - rotateCHeight / 2, mPaint);
+        }
     }
 
     /**
      * 判断是否点击触发在rotate img区域内
      */
     private boolean isValidRotate(float dx, float dy) {
-        RectF rotateRectF = new RectF(mPoints[4] - rotateCWidth / 2, mPoints[5] - rotateCHeight / 2, mPoints[4] + rotateCWidth / 2, mPoints[5] + rotateCHeight / 2);
-        if (rotateRectF.contains(dx, dy)) {
-            return true;
-        } else {
-            return false;
+        for (int i = 0; i < bitmapList.size(); i++) {
+            RectF rotateRectF = new RectF(mPointsList.get(i)[4] - rotateCWidth / 2, mPointsList.get(i)[5] - rotateCHeight / 2, mPointsList.get(i)[4] + rotateCWidth / 2, mPointsList.get(i)[5] + rotateCHeight / 2);
+            if (rotateRectF.contains(dx, dy)) {
+                focusId = i;
+                return true;
+            }
         }
+        return false;
     }
 
     /**
      * 判断是否点击触发在delete img区域内
      */
     private boolean isValidDeleteEvent(float dx, float dy) {
-        RectF deleteRectF = new RectF(mPoints[0] - deleteCWidth / 2, mPoints[1] - deleteCHeight / 2, mPoints[0] + deleteCWidth / 2, mPoints[1] + deleteCHeight / 2);
-        if (deleteRectF.contains(dx, dy)) {
-            return true;
+        for (int i = 0; i < bitmapList.size(); i++) {
+            RectF deleteRectF = new RectF(mPointsList.get(i)[0] - deleteCWidth / 2, mPointsList.get(i)[1] - deleteCHeight / 2, mPointsList.get(i)[0] + deleteCWidth / 2, mPointsList.get(i)[1] + deleteCHeight / 2);
+            if (deleteRectF.contains(dx, dy)) {
+                focusId = i;
+                return true;
+            }
         }
         return false;
     }
@@ -166,9 +199,12 @@ public class StickerView extends View {
      * 判断是否点击触发在Bitmap区域内
      */
     private boolean isValidMoveEvent(float dx, float dy) {
-        RectF bitmapRectF = new RectF(mPoints[0], mPoints[1], mPoints[4], mPoints[5]);
-        if (bitmapRectF.contains(dx, dy)) {
-            return true;
+        for (int i = 0; i < bitmapList.size(); i++) {
+            RectF bitmapRectF = new RectF(mPointsList.get(i)[0], mPointsList.get(i)[1], mPointsList.get(i)[4], mPointsList.get(i)[5]);
+            if (bitmapRectF.contains(dx, dy)) {
+                focusId = i;
+                return true;
+            }
         }
         return false;
     }
@@ -177,23 +213,23 @@ public class StickerView extends View {
      * 删除操作
      */
     private void doDelete() {
-        setBitmap(null);
+        addBitmap(null);
         isValidDeleteEvent = false;
-        invalidate();
+        postInvalidate();
     }
 
     /**
      * 计算旋转的角度
      */
     private float rotation(MotionEvent event) {
-        float originDegree = calculateDegree(mLastPointX, mLastPointY);
+        float originDegree = calculateDegree(mLastPointXList.get(focusId), mLastPointYList.get(focusId));
         float nowDegree = calculateDegree(event.getX(), event.getY());
         return nowDegree - originDegree;
     }
 
     private float calculateDegree(float x, float y) {
-        double delta_x = x - mPoints[8];
-        double delta_y = y - mPoints[9];
+        double delta_x = x - mPointsList.get(focusId)[8];
+        double delta_y = y - mPointsList.get(focusId)[9];
         double radians = Math.atan2(delta_y, delta_x);
         return (float) Math.toDegrees(radians);
     }
@@ -202,8 +238,8 @@ public class StickerView extends View {
      * 计算触摸点距离中心点的长度
      */
     private double caculateLength(float x, float y) {
-        float ex = x - mPoints[8];
-        float ey = y - mPoints[9];
+        float ex = x - mPointsList.get(focusId)[8];
+        float ey = y - mPointsList.get(focusId)[9];
         return Math.sqrt(ex * ex + ey * ey);
     }
 
@@ -216,43 +252,43 @@ public class StickerView extends View {
             case MotionEvent.ACTION_DOWN:
                 if (isValidRotate(x, y)) {
                     isValidRotateEvent = true;
-                    mLastPointX = x;
-                    mLastPointY = y;
+                    mLastPointXList.set(focusId, x);
+                    mLastPointYList.set(focusId, y);
                 }
                 if (isValidDeleteEvent(x, y)) {
                     isValidDeleteEvent = true;
                 }
                 if (isValidMoveEvent(x, y)) {
                     isValidMoveEvent = true;
-                    mLastPointX = x;
-                    mLastPointY = y;
+                    mLastPointXList.set(focusId, x);
+                    mLastPointYList.set(focusId, y);
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
                 if (isValidRotateEvent) {
                     //旋转 & 放大
-                    mMatrix.postRotate(rotation(event), mPoints[8], mPoints[9]);
-                    double orginLength = caculateLength(mPoints[0], mPoints[1]);
+                    mMatrixList.get(focusId).postRotate(rotation(event), mPointsList.get(focusId)[8], mPointsList.get(focusId)[9]);
+                    double orginLength = caculateLength(mPointsList.get(focusId)[0], mPointsList.get(focusId)[1]);
                     double nowLength = caculateLength(event.getX(), event.getY());
                     float scale = (float) (nowLength / orginLength);
-                    mMatrix.postScale(scale, scale, mPoints[8], mPoints[9]);
-                    mLastPointX = x;
-                    mLastPointY = y;
-                    invalidate();
+                    mMatrixList.get(focusId).postScale(scale, scale, mPointsList.get(focusId)[8], mPointsList.get(focusId)[9]);
+                    mLastPointXList.set(focusId, x);
+                    mLastPointYList.set(focusId, y);
+                    postInvalidate();
                 }
                 if (isValidMoveEvent) {
                     //移动图片操作
-                    mMatrix.postTranslate(x - mLastPointX, y - mLastPointY);
-                    mLastPointX = x;
-                    mLastPointY = y;
-                    invalidate();
+                    mMatrixList.get(focusId).postTranslate(x - mLastPointXList.get(focusId), y - mLastPointYList.get(focusId));
+                    mLastPointXList.set(focusId, x);
+                    mLastPointYList.set(focusId, y);
+                    postInvalidate();
                 }
                 break;
             case MotionEvent.ACTION_CANCEL:
                 isValidRotateEvent = false;
                 isValidMoveEvent = false;
-                mLastPointY = 0;
-                mLastPointX = 0;
+                mLastPointXList.set(focusId, 0f);
+                mLastPointYList.set(focusId, 0f);
                 break;
             case MotionEvent.ACTION_UP:
                 isValidRotateEvent = false;
