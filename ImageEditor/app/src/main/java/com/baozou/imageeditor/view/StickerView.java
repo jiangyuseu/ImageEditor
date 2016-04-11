@@ -17,6 +17,7 @@ import android.view.ViewGroup;
 import com.baozou.imageeditor.R;
 import com.baozou.imageeditor.utils.DisplayUtil;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +34,7 @@ public class StickerView extends View {
     //背景bitmap
     private Bitmap bgBitmap;
     //背景Bitmap的长高
-    private float bgBitmapWidth,bgBitmapHeight;
+    private float bgBitmapWidth, bgBitmapHeight;
 
     //操作旋转的bitmap
     private Bitmap rotateController;
@@ -64,6 +65,7 @@ public class StickerView extends View {
     private List<RectF> mRectList = new ArrayList<>();
     //Bitmap的变换matrix
     private List<Matrix> mMatrixList = new ArrayList<>();
+
     //焦点所在的贴纸
     private int focusId = -1;
 
@@ -103,6 +105,8 @@ public class StickerView extends View {
         bgBitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.bg);
         bgBitmapWidth = bgBitmap.getWidth();
         bgBitmapHeight = bgBitmap.getHeight();
+
+        postInvalidate();
     }
 
     /**
@@ -142,25 +146,27 @@ public class StickerView extends View {
     /**
      * 合成图片
      */
-    public Bitmap composeBitmap(){
-        if(bgBitmap == null)
+    public Bitmap composeBitmap() {
+        if (bgBitmap == null)
             return null;
-        Bitmap composeBitmap = Bitmap.createBitmap((int)bgBitmapWidth, (int)bgBitmapHeight, Bitmap.Config.ARGB_8888 );
+
+        Bitmap composeBitmap = Bitmap.createBitmap(bgBitmap.getWidth(), bgBitmap.getHeight(), bgBitmap.getConfig());
         Canvas canvas = new Canvas(composeBitmap);
-        canvas.drawBitmap(composeBitmap,0,0,mPaint);
-        for(int i=0;i<bitmapList.size();i++){
-            canvas.drawBitmap(bitmapList.get(i),mPointsList.get(i)[0],mPointsList.get(i)[1],mPaint);
+        canvas.drawBitmap(bgBitmap, 0, 0, mPaint);
+
+        for (int i = 0; i < bitmapList.size(); i++) {
+            canvas.drawBitmap(bitmapList.get(i), mMatrixList.get(i), mPaint);
         }
-        canvas.save( Canvas.ALL_SAVE_FLAG );
-        canvas.restore();
+
         return composeBitmap;
     }
-
-
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        //绘制背景
+        canvas.drawBitmap(bgBitmap, 0, 0, mPaint);
+
         if (bitmapList == null) {
             return;
         }
